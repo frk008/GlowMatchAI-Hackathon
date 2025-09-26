@@ -1,14 +1,18 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, Sparkles, Shield, Users, CheckCircle, ArrowRight, X, Star } from 'lucide-react';
+import { skinConcerns, getPersonalizedRecommendations } from '../data/products';
+import ProductRecommendations from './ProductRecommendations';
 
 interface AnalysisResults {
   skinType: string;
+  skinTone: string;
   overallScore: number;
   potential: number;
   jawline: number;
   skinQuality: number;
   cheekbones: number;
   recommendations: string[];
+  concerns: string[];
 }
 
 const GlowMatchAI: React.FC = () => {
@@ -17,6 +21,7 @@ const GlowMatchAI: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
+  const [showRecommendations, setShowRecommendations] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCameraCapture = () => {
@@ -56,11 +61,13 @@ const GlowMatchAI: React.FC = () => {
     setTimeout(() => {
       const mockResults: AnalysisResults = {
         skinType: "Combination",
+        skinTone: "Medium",
         overallScore: 78,
         potential: 85,
         jawline: 82,
         skinQuality: 74,
         cheekbones: 88,
+        concerns: ['acne', 'dryness'],
         recommendations: [
           "Gentle exfoliating cleanser for T-zone",
           "Hydrating serum for dry areas",
@@ -84,6 +91,17 @@ const GlowMatchAI: React.FC = () => {
     setIsAnalyzing(false);
   };
 
+  const handleViewRecommendations = () => {
+    setShowRecommendations(true);
+  };
+
+  const scrollToRecommendations = () => {
+    const element = document.getElementById('product-recommendations');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
@@ -95,6 +113,10 @@ const GlowMatchAI: React.FC = () => {
     if (score >= 60) return 'bg-yellow-100';
     return 'bg-red-100';
   };
+
+  // Get personalized product recommendations
+  const productCategories = analysisResults ? 
+    getPersonalizedRecommendations(analysisResults.skinType, analysisResults.concerns) : [];
 
   if (showResults && analysisResults) {
     return (
@@ -128,11 +150,40 @@ const GlowMatchAI: React.FC = () => {
 
               {/* Results */}
               <div className="space-y-6">
-                {/* Skin Type */}
+                {/* Skin Analysis Summary */}
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Skin Type</h3>
-                  <p className="text-3xl font-black text-purple-600">{analysisResults.skinType}</p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <Sparkles className="h-5 w-5 text-purple-600 mr-2" />
+                    Skin Analysis Summary
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Skin Type</p>
+                      <p className="text-lg font-bold text-purple-600">{analysisResults.skinType}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Skin Tone</p>
+                      <p className="text-lg font-bold text-purple-600">{analysisResults.skinTone}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Key Concerns */}
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">Key Concerns Identified</p>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResults.concerns.map((concernId) => {
+                        const concern = skinConcerns.find(c => c.id === concernId);
+                        return concern ? (
+                          <div key={concernId} className="flex items-center space-x-1 bg-white px-3 py-1 rounded-full border border-purple-200">
+                            <span className="text-sm">{concern.icon}</span>
+                            <span className="text-sm font-medium text-gray-700">{concern.name}</span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
                 </div>
+                {/* Skin Type */}
 
                 {/* Scores Grid */}
                 <div className="grid grid-cols-2 gap-4">
@@ -192,18 +243,33 @@ const GlowMatchAI: React.FC = () => {
                 <div className="flex space-x-4">
                   <button
                     onClick={resetAnalysis}
-                    className="flex-1 bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                    className="bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
                   >
                     Analyze Another Photo
                   </button>
-                  <button className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all">
-                    Shop Recommendations
+                  <button 
+                    onClick={handleViewRecommendations}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center space-x-2"
+                  >
+                    <Star className="h-4 w-4" />
+                    <span>View Shopping Recommendations</span>
+                    <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
+        {/* Product Recommendations Section */}
+        {showRecommendations && (
+          <div id="product-recommendations">
+            <ProductRecommendations 
+              categories={productCategories}
+              skinType={analysisResults.skinType}
+            />
+          </div>
+        )}
       </div>
     );
   }
